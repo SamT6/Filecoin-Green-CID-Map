@@ -1,0 +1,19 @@
+@font-face {
+  font-family: "Nabla";
+  src: local("Nabla"),
+   url("../fonts/Nabla-Regular-VariableFont_EDPT\,EHLT.ttf") format("truetype");
+}
+
+@font-palette-values --nabla {
+    font-family: 'Nabla';
+    base-palette: 5;
+}
+
+.special-font {    
+    font-family: 'Nabla', cursive;
+    font-palette: --nabla;
+    font-size: 36px;
+    text-align: center;
+    margin: 0;
+}
+
