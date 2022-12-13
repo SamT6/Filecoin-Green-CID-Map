@@ -6,7 +6,18 @@
 
 @font-palette-values --nabla {
     font-family: 'Nabla';
-    base-palette: 5;
+    /* base-palette: 5; */
+    override-colors: 
+    0 #54A97E, 
+    1 #54A97E,
+    2 #54A97E, 
+    3 #008CF7,
+    4 #54A97E, 
+    5 #54A97E,
+    6 #54A97E, 
+    7 #03CCD3,
+    8 #54A97E, 
+    9 #03CCD3;
 }
 
 .special-font {    

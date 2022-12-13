@@ -1,0 +1,13 @@
+.custom-handle .p-scrollpanel-wrapper {
+    border-right: 9px solid #f4f4f4;
+}
+
+.custom-handle .p-scrollpanel-bar {
+    background-color: #54A97E;
+    opacity: 1;
+    transition: background-color .3s;
+}
+
+.custom-handle .p-scrollpanel-bar:hover {
+    background-color: #54A97E;
+}
