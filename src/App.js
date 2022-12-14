@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import "./styles/app.css"            
@@ -8,6 +8,8 @@ import { Button } from 'primereact/button';
 import { Splitter, SplitterPanel } from 'primereact/splitter';
 import { Card } from 'primereact/card';
 import { ScrollPanel } from 'primereact/scrollpanel';
+import { Toast } from 'primereact/toast';
+
 
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -28,21 +30,40 @@ L.Marker.prototype.options.icon = DefaultIcon;
 const App = () => {
   const { cid } = useParams();
   const navigate = useNavigate();
+  const toast = useRef(null);
 
   const [searchCID, setSearchCID] = useState("");
+  const [providers, setProviders] = useState([]);
 
   useEffect(()=>{
     console.log("searching cid: ", cid);
-    
-    axios.get(`https://cid.contact/cid/${cid}`)
-        .then(result => {
-            console.log(result)
-        })
+    setSearchCID(cid);
+    handleRequests()
   }, [cid]);
+
+  const handleRequests = () => {
+    if(cid){
+      axios.get(`https://cid.contact/cid/${cid}`)
+      .then(result => {
+          console.log(result);
+          console.log(result.data.MultihashResults[0].ProviderResults)
+          setProviders(result.data.MultihashResults[0].ProviderResults.map(element => element.Provider))
+      })
+      .catch(error => {
+        console.log(error);
+        showError()
+      });
+    }
+  }
 
   const handleClickSearch = (event) => {
     event.preventDefault();
     navigate(`/${searchCID}`);
+    handleRequests()
+  }
+
+  const showError = () => {
+    toast.current.show({severity:'error', summary: 'Error!', detail: `Could not retrieve Peers for CID (This probably means your CID is on IPFS but not on Filecoin)`, life: 3000});
   }
 
   const position = [51.505, -0.09]
@@ -60,7 +81,7 @@ const App = () => {
       </div>
 
       <Splitter style={{height: '550px', marginTop: "20px"}} layout="horizontal">
-        <SplitterPanel size={70} minSize={50}>
+        <SplitterPanel size={55} minSize={30}>
           <div style={{margin: 10}}>
             <MapContainer style={{height: "500px"}} center={position} zoom={3} scrollWheelZoom={true}>
               <TileLayer
@@ -75,26 +96,24 @@ const App = () => {
             </MapContainer>
           </div>
         </SplitterPanel>
-        <SplitterPanel size={30} minSize={20}>
+        <SplitterPanel size={45} minSize={20}>
           <ScrollPanel style={{width: '100%', height: '100%'}} className="custom-handle">
-            <Card title="Title" subTitle="SubTitle" style={{margin: "10px"}}>
-              Content
-            </Card>
-            <Card title="Title" subTitle="SubTitle" style={{margin: "10px"}}>
-              Content
-            </Card>
-            <Card title="Title" subTitle="SubTitle" style={{margin: "10px"}}>
-              Content
-            </Card>
-            <Card title="Title" subTitle="SubTitle" style={{margin: "10px"}}>
-              Content
-            </Card>
-            <Card title="Title" subTitle="SubTitle" style={{margin: "10px"}}>
-              Content
-            </Card>
+            {
+              providers.map((provider, index) => {
+                return(
+                  <Card title="Title" subTitle="SubTitle" style={{margin: "10px"}} key={index}>
+                    <div style={{wordBreak: "break-all"}}>
+                      <p> {`Peer ID: ${provider.ID}`}</p>
+                    </div>
+                  </Card>
+                )
+              })
+            }
           </ScrollPanel>
         </SplitterPanel>
       </Splitter>
+
+      <Toast ref={toast} position="bottom-right"/>
     </div>
   );
 }
