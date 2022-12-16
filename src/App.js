@@ -34,19 +34,22 @@ const App = () => {
 
   const [searchCID, setSearchCID] = useState("");
   const [providers, setProviders] = useState([]);
+  const [minerIds, setMinerIds] = useState([])
+  const [peerIdToMinerId, setPeerIdToMinerId] = useState({});
+  const [minerIdToMinerInfo, setMinerIdToMinerInfo] = useState({});
 
   useEffect(()=>{
     console.log("searching cid: ", cid);
     setSearchCID(cid);
-    handleRequests()
+    fetchProviders()
   }, [cid]);
 
-  const handleRequests = () => {
+  const fetchProviders = () => {
     if(cid){
       axios.get(`https://cid.contact/cid/${cid}`)
       .then(result => {
-          console.log(result);
           console.log(result.data.MultihashResults[0].ProviderResults)
+          fetchMinerIds(result.data.MultihashResults[0].ProviderResults.map(element => element.Provider.ID))
           setProviders(result.data.MultihashResults[0].ProviderResults.map(element => element.Provider))
       })
       .catch(error => {
@@ -56,17 +59,85 @@ const App = () => {
     }
   }
 
+  const fetchMinerIds = (peer_ids) => {
+    const listOfPeerIds = peer_ids.reduce((accumulator, currentProvider, currentIndex) => {
+      if(currentIndex === 0)
+        return accumulator + currentProvider;
+      else 
+      return accumulator + "," + currentProvider;
+    }, "");
+
+    axios.get(`https://green.filecoin.space/minerid-peerid/api/v1/miner-id?peer_id=${listOfPeerIds}`)
+          .then(result => {
+            let map = {};
+            let list = [];
+            result.data.forEach(element => {
+              map[element.PeerId] = element.MinerId;
+              list.push(element.MinerId);
+            });
+            fetchMinerLocations(list);
+            setPeerIdToMinerId(map);
+            setMinerIds(list);
+          })
+          .catch(error => {
+            console.log(error);
+          });
+  }
+
+  const fetchMinerLocations = (miner_ids) => {
+    axios.get("https://provider-quest.s3.us-west-2.amazonaws.com/dist/geoip-lookups/synthetic-locations-latest.json")
+      .then(result => {
+        console.log(result.data);
+        let map = {};
+        miner_ids.forEach(element => {
+          map[element] = []
+        });
+        result.data.providerLocations.forEach(element => {
+          if(miner_ids.includes(element.provider)){
+            map[element.provider].push(element)
+          }
+        });
+        console.log(map)
+        setMinerIdToMinerInfo(map);
+      })
+      .catch(error => {
+        console.log(error);
+      });
+  }
+
   const handleClickSearch = (event) => {
     event.preventDefault();
     navigate(`/${searchCID}`);
-    handleRequests()
+    fetchProviders()
   }
 
   const showError = () => {
     toast.current.show({severity:'error', summary: 'Error!', detail: `Could not retrieve Peers for CID (This probably means your CID is on IPFS but not on Filecoin)`, life: 3000});
   }
 
-  const position = [51.505, -0.09]
+  const generateMinerLocationMarkers = () => {
+    let components = [];
+    minerIds.forEach(mid => {
+      if(minerIdToMinerInfo[mid]){
+        let list = minerIdToMinerInfo[mid].map(minerInfo => {
+          const position = [minerInfo.lat, minerInfo.long];
+          console.log(minerInfo);
+
+          return(
+            <Marker position={position}>
+              <Popup>
+                {minerInfo.provider} <br /> 
+                {minerInfo.city + ", " + minerInfo.country}
+              </Popup>
+            </Marker>
+          );
+        });
+        components = components.concat(list);
+      }
+    });
+
+    return components;
+  }
 
   return (
     <div>
@@ -83,16 +154,15 @@ const App = () => {
       <Splitter style={{height: '550px', marginTop: "20px"}} layout="horizontal">
         <SplitterPanel size={55} minSize={30}>
           <div style={{margin: 10}}>
-            <MapContainer style={{height: "500px"}} center={position} zoom={3} scrollWheelZoom={true}>
+            <MapContainer style={{height: "525px"}} center={[30, 0]} zoom={2} scrollWheelZoom={true}>
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              <Marker position={position}>
-                <Popup>
-                  A pretty CSS3 popup. <br /> Easily customizable.
-                </Popup>
-              </Marker>
+              
+              {
+                generateMinerLocationMarkers()
+              }
             </MapContainer>
           </div>
         </SplitterPanel>
@@ -100,10 +170,16 @@ const App = () => {
           <ScrollPanel style={{width: '100%', height: '100%'}} className="custom-handle">
             {
               providers.map((provider, index) => {
+                let title = "Not Filecoin Miner"
+                if(peerIdToMinerId[provider.ID]){
+                  const minerId = peerIdToMinerId[provider.ID];
+                  title = `Miner ID: ${minerId}`
+                }
+
                 return(
-                  <Card title="Title" subTitle="SubTitle" style={{margin: "10px"}} key={index}>
+                  <Card title={title} subTitle={`Peer ID: ${provider.ID}`} style={{margin: "10px"}} key={index}>
                     <div style={{wordBreak: "break-all"}}>
-                      <p> {`Peer ID: ${provider.ID}`}</p>
+                      <p> Address(es): {provider.Addrs} </p>
                     </div>
                   </Card>
                 )
