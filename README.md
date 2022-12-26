@@ -5,7 +5,7 @@ Grant Application writeup: [link](https://docs.google.com/document/d/1kmC79qTU86
 
 
 
-Demo: https://filecoin-green-cid-map.vercel.app/ (currently with CORS errors)
+Demo: https://filecoin-green-cid-map.vercel.app/
 * CID examples  
     * found: bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi
     * error: bafybeiadla4dm75f4j46r2dhxzixofwqhglshy6brzvmnrcckzeymbmv7i
