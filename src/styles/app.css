@@ -11,3 +11,7 @@
 .custom-handle .p-scrollpanel-bar:hover {
     background-color: #54A97E;
 }
+
+.custom-subtitle .p-card-subtitle {
+    word-break: break-all;
+}

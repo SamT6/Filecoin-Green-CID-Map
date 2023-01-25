@@ -30,6 +30,12 @@ const corner1 = L.latLng(-90, -200)
 const corner2 = L.latLng(90, 200)
 const bounds = L.latLngBounds(corner1, corner2)
 
+const useFocus = () => {
+  const htmlElRef = useRef(null)
+  const setFocus = () => {htmlElRef.current &&  htmlElRef.current.focus()}
+
+  return [ htmlElRef, setFocus ] 
+}
 
 const App = () => {
   const { cid } = useParams();
@@ -45,10 +51,38 @@ const App = () => {
   const [totalEnergy, setTotalEnergy] = useState(0);
   const [totalRenewableEnergy, setTotalRenewableEnergy] = useState(0);
 
+  const [width, setWidth] = React.useState(window.innerWidth);
+  const breakpoint = 700;
+  const [inputRef, setInputFocus] = useFocus()
+
+
   useEffect(()=>{
     console.log("searching cid: ", cid);
     setSearchCID(cid);
     fetchProviders()
+
+    const handleResizeWindow = () => setWidth(window.innerWidth);
+    // subscribe to window resize event "onComponentDidMount"
+    window.addEventListener("resize", handleResizeWindow);
+
+    const keyDownHandler = event => {
+      console.log('User pressed: ', event.key);
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+
+        enterPressed();
+      }
+    };
+
+    document.addEventListener('keydown', keyDownHandler);
+
+    return () => {
+      // unsubscribe "onComponentDestroy"
+      window.removeEventListener("resize", handleResizeWindow);
+      document.removeEventListener('keydown', keyDownHandler);
+
+    };
   }, [cid]);
 
   const fetchProviders = () => {
@@ -170,6 +204,10 @@ const App = () => {
     toast.current.show({severity:'error', summary: 'Error!', detail: `Could not retrieve Peers for CID (This probably means your CID is on IPFS but not on Filecoin)`, life: 3000});
   }
 
+  const displayEnergyNumber = (text) => {
+    return (parseFloat(text)*0.001).toFixed(2); // kWh to MWh
+  }
+
   const generateMinerLocationMarkers = () => {
     let components = [];
     minerIds.forEach(mid => {
@@ -202,7 +240,7 @@ const App = () => {
         title = `Miner ID: ${minerId}`
 
         return(
-          <Card title={title} subTitle={`Peer ID: ${provider.ID}`} style={{margin: "10px"}} key={index}>
+          <Card title={title} subTitle={`Peer ID: ${provider.ID}`} style={{margin: "10px"}} key={index} className='custom-subtitle'>
             <div style={{wordBreak: "break-all"}}>
               <p> Address(es): 
                 {provider.Addrs.reduce((accumulator, currentProvider, currentIndex) => {
@@ -215,20 +253,20 @@ const App = () => {
               </p>
               <Tag value={"Total data stored: " + minerIdToEnergy[minerId]["total_data"]} severity="primary" style={{margin: "2px"}}></Tag>
               <br></br>
-              <Tag value={"Estimated total energy used: " + minerIdToEnergy[minerId]["estimate_energy"]} severity="warning" style={{margin: "2px"}}></Tag>
+              <Tag value={"Estimated total energy used: " + displayEnergyNumber(minerIdToEnergy[minerId]["estimate_energy"]) + " MWh"} severity="warning" style={{margin: "2px"}}></Tag>
               <br></br>
-              <Tag value={"Lower-bound total energy used: " + minerIdToEnergy[minerId]["lower_bound_energy"]} severity="info" style={{margin: "2px"}}></Tag>
+              <Tag value={"Lower-bound total energy used: " + displayEnergyNumber(minerIdToEnergy[minerId]["lower_bound_energy"]) + " MWh"} severity="info" style={{margin: "2px"}}></Tag>
               <br></br>
-              <Tag value={"Upper-bound total energy used: " + minerIdToEnergy[minerId]["upper_bound_energy"]} severity="info" style={{margin: "2px"}}></Tag>
+              <Tag value={"Upper-bound total energy used: " + displayEnergyNumber(minerIdToEnergy[minerId]["upper_bound_energy"]) + " MWh"} severity="info" style={{margin: "2px"}}></Tag>
               <br></br>
-              <Tag value={"Total renewable energy purchased: " + minerIdToEnergy[minerId]["renewable_energy"]} severity="success" style={{margin: "2px"}}></Tag>
+              <Tag value={"Total renewable energy purchased: " + displayEnergyNumber(minerIdToEnergy[minerId]["renewable_energy"]) + " MWh"} severity="success" style={{margin: "2px"}}></Tag>
             </div>
           </Card>
         )
       }
       else{
         return(
-          <Card title={title} subTitle={`Peer ID: ${provider.ID}`} style={{margin: "10px"}} key={index}>
+          <Card title={title} subTitle={`Peer ID: ${provider.ID}`} style={{margin: "10px"}} key={index} className='custom-subtitle'>
             <div style={{wordBreak: "break-all"}}>
               <p> Address(es): 
                 {provider.Addrs.reduce((accumulator, currentProvider, currentIndex) => {
@@ -247,24 +285,28 @@ const App = () => {
     })
   }
 
+  const enterPressed = () => {
+    console.log('pressed Enter ✅');
+    setInputFocus()
+  };
+
   return (
     <div>
-      <h2 className="special-font">Filecoin Green CID Map</h2>
+      <h2 className={width > breakpoint ? "special-font" : "special-font-mobile"}>Filecoin Green CID Map</h2>
       <div className="grid p-fluid" style={{marginLeft: 50, marginRight: 50}}>
           <div className="col-12 md:col-4">
               <div className="p-inputgroup">
-                  <InputText placeholder="CID" value={searchCID} onChange={(e) => setSearchCID(e.target.value)}/>
+                  <InputText placeholder="CID" value={searchCID} onChange={(e) => setSearchCID(e.target.value)} ref={inputRef}/>
                   <Button style={{backgroundColor: "#54A97E", border: "0px"}} label="Search" onClick={handleClickSearch}/>
               </div>
           </div>
       </div>
       
- 
-
-      <Splitter style={{height: '550px', marginTop: "20px"}} layout="horizontal">
+      
+      <Splitter style={{height: '550px', marginTop: "20px"}} layout={width > breakpoint ? "horizontal" : "vertical"}>
         <SplitterPanel size={55} minSize={30}>
           <div style={{margin: 10}}>
-            <MapContainer style={{height: "525px"}} center={[28, 8]} zoom={2} scrollWheelZoom={true} 
+            <MapContainer style={{height: width > breakpoint ? "525px" : "400px"}} center={[28, 8]} zoom={2} scrollWheelZoom={true} 
                           maxBoundsViscosity={1.0} maxBounds={bounds}>
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -281,9 +323,9 @@ const App = () => {
             <Card style={{margin: "5px", padding: "2px"}} >
               <div>
                   <p>Total energy ⚡️ used by all minerIDs storing the CID</p>
-                  <Tag value={totalEnergy + " kWh"} severity="warning" style={{margin: "2px"}}></Tag>
+                  <Tag value={displayEnergyNumber(totalEnergy) + " MWh"} severity="warning" style={{margin: "2px"}}></Tag>
                   <p>Total renewable energy 🌱 purchased by all minerIDs storing the CID</p>
-                  <Tag value={totalRenewableEnergy + " kWh"} severity="success" style={{margin: "2px"}}></Tag>
+                  <Tag value={displayEnergyNumber(totalRenewableEnergy) + " MWh"} severity="success" style={{margin: "2px"}}></Tag>
               </div>
             </Card>
             {

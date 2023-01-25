@@ -28,3 +28,11 @@
     margin: 0;
 }
 
+.special-font-mobile {    
+    font-family: 'Nabla', cursive;
+    font-palette: --nabla;
+    font-size: 28px;
+    text-align: center;
+    margin: 0;
+}
+
