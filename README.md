@@ -11,12 +11,14 @@ Demo: https://filecoin-green-cid-map.vercel.app/
     * error: bafybeiadla4dm75f4j46r2dhxzixofwqhglshy6brzvmnrcckzeymbmv7i
 
 ![demo](./imgs/demo.png)
+<img src="./imgs/demo-responsive.png" width="200"/>
+
 
 ## Localhost
 * `npm install` to install all dependencies   
 * `npm start` to start localhost
 
-## Libries & Resources
+## Libraries & Resources
 * Font: https://fonts.google.com/specimen/Nabla  
     * https://material.io/blog/color-fonts-are-here
 * PrimeReact: https://www.primefaces.org/primereact/
