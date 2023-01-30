@@ -11,6 +11,7 @@ Demo: https://filecoin-green-cid-map.vercel.app/
     * error: bafybeiadla4dm75f4j46r2dhxzixofwqhglshy6brzvmnrcckzeymbmv7i
 
 ![demo](./imgs/demo.png)
+<img src="./imgs/demo-renewenergy.png" width="300"/>  
 <img src="./imgs/demo-responsive.png" width="200"/>
 
 
