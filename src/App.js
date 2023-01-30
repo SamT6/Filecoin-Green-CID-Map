@@ -10,6 +10,8 @@ import { Card } from 'primereact/card';
 import { ScrollPanel } from 'primereact/scrollpanel';
 import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
 
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -50,6 +52,7 @@ const App = () => {
   const [minerIdToEnergy, setMinerIdToEnergy] = useState({});
   const [totalEnergy, setTotalEnergy] = useState(0);
   const [totalRenewableEnergy, setTotalRenewableEnergy] = useState(0);
+  const [minerIdToRenewEnergy, setMinerIdToRenewEnergy] = useState({});
 
   const [width, setWidth] = React.useState(window.innerWidth);
   const breakpoint = 700;
@@ -89,7 +92,7 @@ const App = () => {
     if(cid){
       axios.get(`https://cid.contact/cid/${cid}`)
       .then(result => {
-          console.log(result.data.MultihashResults[0].ProviderResults)
+          console.log("providers: ", result.data.MultihashResults[0].ProviderResults)
           fetchMinerIds(result.data.MultihashResults[0].ProviderResults.map(element => element.Provider.ID))
           setProviders(result.data.MultihashResults[0].ProviderResults.map(element => element.Provider))
       })
@@ -110,6 +113,7 @@ const App = () => {
 
     axios.get(`https://green.filecoin.space/minerid-peerid/api/v1/miner-id?peer_id=${listOfPeerIds}`)
           .then(result => {
+            console.log("miner ids: " ,result.data)
             let map = {};
             let list = [];
             result.data.forEach(element => {
@@ -131,6 +135,7 @@ const App = () => {
     let minerEnergyInfo = {};
     let totalEnergy = 0;
     let totalRenewableEnergy = 0;
+    let minerRenewEnergyInfo = {};
 
     miner_ids.forEach(id => {
       let minerInfo = {};
@@ -166,11 +171,63 @@ const App = () => {
         setTotalRenewableEnergy(totalRenewableEnergy);
       })
 
+      let minerRenewInfo = {}
+      // get amount of each type of renewable energy purchased
+      axios.get(`https://proofs-api.zerolabs.green/api/partners/filecoin/nodes/${id}/contracts`)
+      .then(result => {
+        console.log("renewable energy: ", result.data)
+        // get list of contracts
+        result.data.contracts.forEach(contract => {
+          const energySources = contract.energySources;
+          const openVolume = contract.openVolume;
+          const deliveredVolume = contract.deliveredVolume;
+          
+          if(energySources[0] === "WIND" && energySources[1] === "SOLAR"){
+            if(minerRenewInfo["Wind or Solar"])
+              minerRenewInfo["Wind or Solar"] = {
+                "energySource": "Wind or Solar",
+                "openVolume": parseInt(minerRenewInfo["Wind or Solar"].openVolume) + parseInt(openVolume),
+                "deliveredVolume": parseInt(minerRenewInfo["Wind or Solar"].deliveredVolume) + parseInt(deliveredVolume),
+              };
+            else 
+              minerRenewInfo["Wind or Solar"] = {
+                "energySource": "Wind or Solar",
+                "openVolume": parseInt(openVolume),
+                "deliveredVolume": parseInt(deliveredVolume),
+              };
+
+          }
+          else{
+            if(minerRenewInfo[energySources[0]])
+            minerRenewInfo[energySources[0]] = {
+                "energySource": energySources[0],
+                "openVolume": parseInt(minerRenewInfo[energySources[0]].openVolume) + parseInt(openVolume),
+                "deliveredVolume": parseInt(minerRenewInfo[energySources[0]].deliveredVolume) + parseInt(deliveredVolume),
+              };
+            else 
+              minerRenewInfo[energySources[0]] = {
+                "energySource": energySources[0],
+                "openVolume": parseInt(openVolume),
+                "deliveredVolume": parseInt(deliveredVolume),
+              };
+          }
+
+        })
+
+        console.log(minerRenewInfo)
+
+      }).catch(error => {
+        console.log(error)
+      })
+
+
       minerEnergyInfo[id] = minerInfo; 
+      minerRenewEnergyInfo[id] = minerRenewInfo;
     });
 
     console.log(minerEnergyInfo)
     setMinerIdToEnergy(minerEnergyInfo);
+    setMinerIdToRenewEnergy(minerRenewEnergyInfo);
   }
 
   const fetchMinerLocations = (miner_ids) => {
@@ -239,6 +296,19 @@ const App = () => {
         const minerId = peerIdToMinerId[provider.ID];
         title = `Miner ID: ${minerId}`
 
+        const renewEnergyList = []
+        Object.keys(minerIdToRenewEnergy[minerId]).forEach((key, index) => {
+          const obj = {
+            "energySource": minerIdToRenewEnergy[minerId][key].energySource,  
+            "openVolume": minerIdToRenewEnergy[minerId][key].openVolume * 10 **-6,
+            "deliveredVolume": minerIdToRenewEnergy[minerId][key].deliveredVolume * 10 **-6,
+          }
+          
+          renewEnergyList.push(obj)
+        })
+
+        const purchasedRenewEnergy = parseFloat(displayEnergyNumber(minerIdToEnergy[minerId]["renewable_energy"])) === 0.00 ? false : true;
+      
         return(
           <Card title={title} subTitle={`Peer ID: ${provider.ID}`} style={{margin: "10px"}} key={index} className='custom-subtitle'>
             <div style={{wordBreak: "break-all"}}>
@@ -260,6 +330,18 @@ const App = () => {
               <Tag value={"Upper-bound total energy used: " + displayEnergyNumber(minerIdToEnergy[minerId]["upper_bound_energy"]) + " MWh"} severity="info" style={{margin: "2px"}}></Tag>
               <br></br>
               <Tag value={"Total renewable energy purchased: " + displayEnergyNumber(minerIdToEnergy[minerId]["renewable_energy"]) + " MWh"} severity="success" style={{margin: "2px"}}></Tag>
+              <br></br>
+
+              { purchasedRenewEnergy ?
+                <DataTable value={renewEnergyList} size="small" responsiveLayout="scroll">
+                  <Column field="energySource" header="Energy Source"></Column>
+                  <Column field="openVolume" header="Open Volume (MWh)"></Column>
+                  <Column field="deliveredVolume" header="Delivered Volume (MWh)"></Column>
+                </DataTable>
+                :
+                <></>
+              } 
+             
             </div>
           </Card>
         )
