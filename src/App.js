@@ -179,6 +179,7 @@ const App = () => {
         // get list of contracts
         result.data.contracts.forEach(contract => {
           const energySources = contract.energySources;
+          console.log("energy sources: ", energySources)
           const openVolume = contract.openVolume;
           const deliveredVolume = contract.deliveredVolume;
           
@@ -198,18 +199,22 @@ const App = () => {
 
           }
           else{
-            if(minerRenewInfo[energySources[0]])
-            minerRenewInfo[energySources[0]] = {
-                "energySource": energySources[0],
+            if(minerRenewInfo[energySources[0]]){
+              const energy_source = energySources[0].charAt(0) + energySources[0].substring(1).toLowerCase();
+              minerRenewInfo[energySources[0]] = {
+                "energySource": energy_source,
                 "openVolume": parseInt(minerRenewInfo[energySources[0]].openVolume) + parseInt(openVolume),
                 "deliveredVolume": parseInt(minerRenewInfo[energySources[0]].deliveredVolume) + parseInt(deliveredVolume),
               };
-            else 
+            }
+            else{
+              const energy_source = energySources[0].charAt(0) + energySources[0].substring(1).toLowerCase();
               minerRenewInfo[energySources[0]] = {
-                "energySource": energySources[0],
+                "energySource": energy_source,
                 "openVolume": parseInt(openVolume),
                 "deliveredVolume": parseInt(deliveredVolume),
               };
+            }
           }
 
         })
